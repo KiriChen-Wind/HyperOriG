@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
     <queries>
-        <package android:name="com.orig.headset" />
+        <package android:name="com.yuandao.nicehck" />
     </queries>
 
     <application
@@ -44,7 +44,7 @@
         <!-- Set your Xposed Module description -->
         <meta-data
             android:name="xposeddescription"
-            android:value="OPPO Earphones Support for Xiaomi HyperOS." />
+            android:value="为 NickHCK YuanDao OriG in 耳机接入 Xiaomi HyperOS。" />
 
         <!-- The minimum Xposed version number -->
         <meta-data

@@ -56,7 +56,7 @@ class PopupActivity : ComponentActivity() {
                     onMore = {
                         val prefs = getSharedPreferences("hyperorig_settings", Context.MODE_PRIVATE)
                         if (prefs.getBoolean("open_orig", false)) {
-                            val intent = packageManager.getLaunchIntentForPackage("com.orig.headset")
+                            val intent = packageManager.getLaunchIntentForPackage("com.yuandao.nicehck")
                             if (intent != null) {
                                 startActivity(intent)
                             } else {
