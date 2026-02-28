@@ -1,0 +1,40 @@
+[versions]
+agp = "8.13.0-alpha02"
+kotlin = "2.2.20"
+ksp = "2.2.20-2.0.3"
+coreKtx = "1.17.0"
+androidx-activity-compose = "1.11.0"
+composeBom = "2025.05.00"
+kotlinxSerializationJson = "1.9.0"
+xposedApi = "82"
+yukihookApi = "1.3.1"
+miuix = "0.8.3"
+navigation3 = "1.0.0-rc01"
+
+[plugins]
+agp-app = { id = "com.android.application", version.ref = "agp" }
+agp-lib = { id = "com.android.library", version.ref = "agp" }
+kotlin = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+lsplugin-apksign = { id = "org.lsposed.lsplugin.apksign", version = "1.4" }
+lsplugin-resopt = { id = "org.lsposed.lsplugin.resopt", version = "1.6" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+parcelize = { id = 'kotlin-parcelize' }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+[libraries]
+coreKtx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+xposedApi = { group = "de.robv.android.xposed", name = "api", version.ref = "xposedApi" }
+yukihookApi = { group = "com.highcapable.yukihookapi", name = "api", version.ref = "yukihookApi" }
+yukihookKsp = { group = "com.highcapable.yukihookapi", name = "ksp-xposed", version.ref = "yukihookApi" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+miuix = { group = "top.yukonga.miuix.kmp", name = "miuix-android", version.ref = "miuix" }
+miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons-android", version.ref = "miuix" }
+miuix-navigation3-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-navigation3-ui-android", version.ref = "miuix" }
+navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3" }

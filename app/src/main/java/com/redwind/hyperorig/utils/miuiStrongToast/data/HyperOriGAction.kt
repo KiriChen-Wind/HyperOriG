@@ -1,0 +1,25 @@
+package com.redwind.hyperorig.utils.miuiStrongToast.data
+
+object HyperOriGAction {
+    const val ACTION_PODS_UI_INIT = "com.redwind.hyperorig.action.ui_init"
+    const val ACTION_PODS_CONNECTED = "com.redwind.hyperorig.action.pods_connected"
+    const val ACTION_PODS_DISCONNECTED = "com.redwind.hyperorig.action.pods_disconnected"
+    const val ACTION_PODS_BATTERY_CHANGED = "com.redwind.hyperorig.action.pods_battery_changed"
+    const val ACTION_ANC_SELECT = "com.redwind.hyperorig.action.anc_select"
+    const val ACTION_PODS_ANC_CHANGED = "com.redwind.hyperorig.action.pods_anc_select"
+    const val ACTION_GET_PODS_MAC = "com.redwind.hyperorig.action.get_pods_mac"
+    const val ACTION_PODS_MAC_RECEIVED = "com.redwind.hyperorig.action.get_pods_mac"
+    const val ACTION_REFRESH_STATUS = "com.redwind.hyperorig.action.refresh_status"
+    const val ACTION_GAME_MODE_SET = "com.redwind.hyperorig.action.game_mode_set"
+    const val ACTION_PODS_GAME_MODE_CHANGED = "com.redwind.hyperorig.action.pods_game_mode_changed"
+    const val ACTION_LOW_LATENCY_SET = "com.redwind.hyperorig.action.low_latency_set"
+    const val ACTION_PODS_LOW_LATENCY_CHANGED = "com.redwind.hyperorig.action.pods_low_latency_changed"
+    const val ACTION_DUAL_CONN_SET = "com.redwind.hyperorig.action.dual_conn_set"
+    const val ACTION_PODS_DUAL_CONN_CHANGED = "com.redwind.hyperorig.action.pods_dual_conn_changed"
+    const val ACTION_EQ_SET = "com.redwind.hyperorig.action.eq_set"
+    const val ACTION_PODS_EQ_CHANGED = "com.redwind.hyperorig.action.pods_eq_changed"
+    const val ACTION_WIND_SUPPRESSION_SET = "com.redwind.hyperorig.action.wind_suppression_set"
+    const val ACTION_PODS_WIND_SUPPRESSION_CHANGED = "com.redwind.hyperorig.action.pods_wind_suppression_changed"
+    const val ACTION_IN_EAR_DETECTION_SET = "com.redwind.hyperorig.action.in_ear_detection_set"
+    const val ACTION_PODS_IN_EAR_DETECTION_CHANGED = "com.redwind.hyperorig.action.pods_in_ear_detection_changed"
+}
