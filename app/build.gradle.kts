@@ -22,10 +22,10 @@ android {
 
     defaultConfig {
         applicationId = "com.redwind.hyperorig"
-        minSdk = 33
+        minSdk = 35
         targetSdk = 36
-        versionCode = 26030101
-        versionName = "1.0 Dev"
+        versionCode = 26030103
+        versionName = "1.2"
     }
 
     buildTypes {

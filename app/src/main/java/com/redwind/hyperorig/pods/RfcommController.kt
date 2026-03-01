@@ -74,6 +74,7 @@ object RfcommController {
     private var currentDualConn: Boolean = false
     private var currentEq: EqMode = EqMode.BALANCED
     private var currentWindSuppression: Boolean = false
+    private var currentInEarDetection: Boolean = false
 
     // 缓存电量，只在收到汇报时更新
     private var cachedLeftBattery: PodParams? = null
@@ -162,6 +163,15 @@ object RfcommController {
         }
     }
 
+    private fun changeUIInEarDetectionStatus(enabled: Boolean) {
+        Intent(HyperOriGAction.ACTION_PODS_IN_EAR_DETECTION_CHANGED).apply {
+            this.putExtra("enabled", enabled)
+            this.`package` = BuildConfig.APPLICATION_ID
+            this.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+            mContext!!.sendBroadcast(this)
+        }
+    }
+
     fun handleUIEvent(intent: Intent) {
         when (intent.action) {
             HyperOriGAction.ACTION_PODS_UI_INIT -> {
@@ -174,6 +184,7 @@ object RfcommController {
                 changeUIDualConnStatus(currentDualConn)
                 changeUIEqStatus(currentEq)
                 changeUIWindSuppressionStatus(currentWindSuppression)
+                changeUIInEarDetectionStatus(currentInEarDetection)
                 val deviceName = mDevice.alias ?: mDevice.name ?: mDevice.address
                 Intent(HyperOriGAction.ACTION_PODS_CONNECTED).apply {
                     this.putExtra("device_name", deviceName)
@@ -198,6 +209,7 @@ object RfcommController {
                 changeUIDualConnStatus(currentDualConn)
                 changeUIEqStatus(currentEq)
                 changeUIWindSuppressionStatus(currentWindSuppression)
+                changeUIInEarDetectionStatus(currentInEarDetection)
                 // 然后查询耳机状态
                 queryStatus()
             }
@@ -220,6 +232,10 @@ object RfcommController {
             HyperOriGAction.ACTION_WIND_SUPPRESSION_SET -> {
                 val enabled = intent.getBooleanExtra("enabled", false)
                 setWindSuppression(enabled)
+            }
+            HyperOriGAction.ACTION_IN_EAR_DETECTION_SET -> {
+                val enabled = intent.getBooleanExtra("enabled", false)
+                setInEarDetection(enabled)
             }
         }
     }
@@ -386,6 +402,7 @@ object RfcommController {
             this.addAction(HyperOriGAction.ACTION_DUAL_CONN_SET)
             this.addAction(HyperOriGAction.ACTION_EQ_SET)
             this.addAction(HyperOriGAction.ACTION_WIND_SUPPRESSION_SET)
+            this.addAction(HyperOriGAction.ACTION_IN_EAR_DETECTION_SET)
         }, Context.RECEIVER_EXPORTED)
 
         val deviceName = device.alias ?: device.name ?: device.address
@@ -572,7 +589,20 @@ object RfcommController {
         if (windSuppressionResult != null) {
             Log.d(TAG, "Wind suppression received: $windSuppressionResult")
             currentWindSuppression = windSuppressionResult
+            // 抗风噪也是ANC模式的一种，需要同步更新ANC状态
+            if (windSuppressionResult) {
+                currentAnc = 6 // WIND_SUPPRESSION
+                changeUIAncStatus(currentAnc)
+            }
             changeUIWindSuppressionStatus(windSuppressionResult)
+            return
+        }
+
+        val inEarDetectionResult = InEarDetectionParser.parse(packet)
+        if (inEarDetectionResult != null) {
+            Log.d(TAG, "In-ear detection received: $inEarDetectionResult")
+            currentInEarDetection = inEarDetectionResult
+            changeUIInEarDetectionStatus(inEarDetectionResult)
             return
         }
 
@@ -616,15 +646,17 @@ object RfcommController {
     fun setGameMode(enabled: Boolean) {
         Log.d(TAG, "setGameMode: $enabled")
         currentGameMode = enabled
+        currentLowLatency = enabled
         val packet = if (enabled) Enums.GAME_MODE_ON else Enums.GAME_MODE_OFF
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
         }
+        changeUIGameModeStatus(enabled)
+        changeUILowLatencyStatus(enabled)
     }
 
     fun setANCMode(mode: Int) {
         Log.d(TAG, "setANCMode: $mode")
-        // 如果用户点击的是当前已处于的降噪模式，忽略操作
         if (mode == currentAnc) {
             Log.d(TAG, "Current ANC mode is already $mode, skipping")
             return
@@ -639,9 +671,18 @@ object RfcommController {
             else -> return
         }
         currentAnc = mode
+        // 抗风噪模式需要同步更新windSuppression状态
+        if (mode == 6) {
+            currentWindSuppression = true
+            changeUIWindSuppressionStatus(true)
+        } else if (currentWindSuppression) {
+            currentWindSuppression = false
+            changeUIWindSuppressionStatus(false)
+        }
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
         }
+        changeUIAncStatus(currentAnc)
     }
 
     fun setLowLatency(enabled: Boolean) {
@@ -651,6 +692,7 @@ object RfcommController {
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
         }
+        changeUILowLatencyStatus(enabled)
     }
 
     fun setDualConn(enabled: Boolean) {
@@ -660,11 +702,11 @@ object RfcommController {
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
         }
+        changeUIDualConnStatus(enabled)
     }
 
     fun setEq(mode: EqMode) {
         Log.d(TAG, "setEq: $mode")
-        // 如果用户选择的是当前已处于的EQ模式，忽略操作
         if (mode == currentEq) {
             Log.d(TAG, "Current EQ mode is already $mode, skipping")
             return
@@ -674,6 +716,7 @@ object RfcommController {
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
         }
+        changeUIEqStatus(mode)
     }
 
     fun setWindSuppression(enabled: Boolean) {
@@ -683,6 +726,17 @@ object RfcommController {
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
         }
+        changeUIWindSuppressionStatus(enabled)
+    }
+
+    fun setInEarDetection(enabled: Boolean) {
+        Log.d(TAG, "setInEarDetection: $enabled")
+        currentInEarDetection = enabled
+        val packet = if (enabled) Enums.IN_EAR_DETECTION_ON else Enums.IN_EAR_DETECTION_OFF
+        CoroutineScope(Dispatchers.IO).launch {
+            sendPacketSafe(packet)
+        }
+        changeUIInEarDetectionStatus(enabled)
     }
 
     fun queryBattery() {
@@ -706,6 +760,8 @@ object RfcommController {
             sendPacketSafe(OriGPackets.buildPacket(Op.EQ_QUERY))
             delay(50)
             sendPacketSafe(OriGPackets.buildPacket(Op.WIND_SUPPRESSION_QUERY))
+            delay(50)
+            sendPacketSafe(Enums.QUERY_IN_EAR_DETECTION)
         }
     }
 

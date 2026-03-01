@@ -204,6 +204,10 @@ fun MainUI(
                     HyperOriGAction.ACTION_PODS_WIND_SUPPRESSION_CHANGED -> {
                         val enabled = p1.getBooleanExtra("enabled", false)
                         windSuppressionMode.value = enabled
+                        // 抗风噪也是ANC模式的一种，需要同步更新ANC状态
+                        if (enabled) {
+                            ancMode.value = NoiseControlMode.WIND_SUPPRESSION
+                        }
                     }
 
                     HyperOriGAction.ACTION_PODS_IN_EAR_DETECTION_CHANGED -> {

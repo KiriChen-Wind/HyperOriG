@@ -150,6 +150,13 @@ private fun PopupContent(onMore: () -> Unit, onDone: () -> Unit) {
                         val value = p1.getIntExtra("value", 0)
                         eqMode.value = EqMode.fromValue(value)
                     }
+                    HyperOriGAction.ACTION_PODS_WIND_SUPPRESSION_CHANGED -> {
+                        val enabled = p1.getBooleanExtra("enabled", false)
+                        // 抗风噪也是ANC模式的一种，需要同步更新ANC状态
+                        if (enabled) {
+                            ancMode.value = NoiseControlMode.WIND_SUPPRESSION
+                        }
+                    }
                 }
             }
         }
@@ -164,6 +171,7 @@ private fun PopupContent(onMore: () -> Unit, onDone: () -> Unit) {
             addAction(HyperOriGAction.ACTION_PODS_DISCONNECTED)
             addAction(HyperOriGAction.ACTION_PODS_GAME_MODE_CHANGED)
             addAction(HyperOriGAction.ACTION_PODS_EQ_CHANGED)
+            addAction(HyperOriGAction.ACTION_PODS_WIND_SUPPRESSION_CHANGED)
         }, Context.RECEIVER_EXPORTED)
 
         Log.d("HyperOriG-Popup", "发送初始化广播，请求设备名称和状态")
