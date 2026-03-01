@@ -1,0 +1,116 @@
+name: Build OppoPods
+
+on:
+  push:
+    tags: [ "*" ]
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ env.SIGNING_KEY != '' }}
+        run: |
+          echo 'org.gradle.parallel=true' >> gradle.properties
+          echo 'org.gradle.jvmargs=-Xmx2048m' >> gradle.properties
+          ./gradlew assembleRelease
+
+      - name: Build debug APK (fallback when no signing key)
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ env.SIGNING_KEY == '' }}
+        run: |
+          echo 'org.gradle.parallel=true' >> gradle.properties
+          echo 'org.gradle.jvmargs=-Xmx2048m' >> gradle.properties
+          ./gradlew assembleDebug
+
+      - name: Sign release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ env.SIGNING_KEY != '' }}
+        run: |
+          # Decode keystore from base64
+          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
+
+          # Find latest build-tools
+          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)
+          echo "Using build-tools: $BUILD_TOOLS"
+
+          # Find the unsigned APK
+          UNSIGNED_APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "Unsigned APK: $UNSIGNED_APK"
+
+          # Zipalign
+          ${BUILD_TOOLS}zipalign -f 4 "$UNSIGNED_APK" app/build/outputs/apk/release/OppoPods-release-signed.apk
+
+          # Sign with apksigner
+          ${BUILD_TOOLS}apksigner sign \
+            --ks /tmp/keystore.jks \
+            --ks-key-alias "${{ secrets.ALIAS }}" \
+            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            app/build/outputs/apk/release/OppoPods-release-signed.apk
+
+          # Verify
+          ${BUILD_TOOLS}apksigner verify --print-certs app/build/outputs/apk/release/OppoPods-release-signed.apk
+
+          # Cleanup
+          rm /tmp/keystore.jks
+
+      - name: Upload signed release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ env.SIGNING_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: OppoPods-release
+          path: app/build/outputs/apk/release/OppoPods-release-signed.apk
+
+      - name: Upload debug APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ env.SIGNING_KEY == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: OppoPods-debug
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Create GitHub Release
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.SIGNING_KEY != '' }}
+        uses: ncipollo/release-action@v1
+        continue-on-error: true
+        with:
+          token: ${{ github.token }}
+          artifacts: app/build/outputs/apk/release/OppoPods-release-signed.apk
+          generateReleaseNotes: true
+          makeLatest: true
+          replacesArtifacts: true

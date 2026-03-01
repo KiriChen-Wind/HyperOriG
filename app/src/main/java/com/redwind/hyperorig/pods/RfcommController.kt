@@ -100,7 +100,7 @@ object RfcommController {
     }
 
     private fun changeUIAncStatus(status: Int) {
-        if (status < 1 || status > 4) return
+        if (status < 1 || status > 6) return
         Intent(HyperOriGAction.ACTION_PODS_ANC_CHANGED).apply {
             this.putExtra("status", status)
             this.`package` = BuildConfig.APPLICATION_ID
@@ -176,15 +176,6 @@ object RfcommController {
         when (intent.action) {
             HyperOriGAction.ACTION_PODS_UI_INIT -> {
                 Log.i(TAG, "UI Init")
-                if (::currentBatteryParams.isInitialized)
-                    changeUIBatteryStatus(currentBatteryParams)
-                changeUIAncStatus(currentAnc)
-                changeUIGameModeStatus(currentGameMode)
-                changeUILowLatencyStatus(currentLowLatency)
-                changeUIDualConnStatus(currentDualConn)
-                changeUIEqStatus(currentEq)
-                changeUIWindSuppressionStatus(currentWindSuppression)
-                changeUIInEarDetectionStatus(currentInEarDetection)
                 val deviceName = mDevice.alias ?: mDevice.name ?: mDevice.address
                 Intent(HyperOriGAction.ACTION_PODS_CONNECTED).apply {
                     this.putExtra("device_name", deviceName)
@@ -194,23 +185,16 @@ object RfcommController {
                 val prefs = mContext!!.getSharedPreferences("hyperorig_device", Context.MODE_PRIVATE)
                 prefs.edit().putString("device_name", deviceName).apply()
                 Log.d(TAG, "设备名称已保存到缓存: $deviceName")
+                // 先查询耳机状态，然后再发送状态给UI
+                queryStatus()
             }
             HyperOriGAction.ACTION_ANC_SELECT -> {
                 val status = intent.getIntExtra("status", 0)
                 setANCMode(status)
             }
             HyperOriGAction.ACTION_REFRESH_STATUS -> {
-                // 先发送当前状态给UI，然后再查询耳机状态
-                if (::currentBatteryParams.isInitialized)
-                    changeUIBatteryStatus(currentBatteryParams)
-                changeUIAncStatus(currentAnc)
-                changeUIGameModeStatus(currentGameMode)
-                changeUILowLatencyStatus(currentLowLatency)
-                changeUIDualConnStatus(currentDualConn)
-                changeUIEqStatus(currentEq)
-                changeUIWindSuppressionStatus(currentWindSuppression)
-                changeUIInEarDetectionStatus(currentInEarDetection)
-                // 然后查询耳机状态
+                // 直接查询耳机状态，不先发送缓存状态
+                // 这样可以避免状态闪烁
                 queryStatus()
             }
             HyperOriGAction.ACTION_GAME_MODE_SET -> {
@@ -541,15 +525,20 @@ object RfcommController {
         val ancResult = AncModeParser.parse(packet)
         if (ancResult != null) {
             Log.d(TAG, "ANC mode received: $ancResult")
-            currentAnc = when (ancResult) {
-                NoiseControlMode.OFF -> 1
-                NoiseControlMode.TRANSPARENT -> 2
-                NoiseControlMode.NORMAL -> 3
-                NoiseControlMode.DEEP -> 4
-                NoiseControlMode.EXPERIMENT -> 5
-                NoiseControlMode.WIND_SUPPRESSION -> 6
+            // 只有当抗风噪开启时才忽略 ANC 响应
+            // 这样可以避免抗风噪开启时 ANC 查询返回 OFF 导致的闪烁
+            // 同时确保抗风噪关闭时能正确同步 ANC 状态
+            if (!currentWindSuppression) {
+                currentAnc = when (ancResult) {
+                    NoiseControlMode.OFF -> 1
+                    NoiseControlMode.TRANSPARENT -> 2
+                    NoiseControlMode.NORMAL -> 3
+                    NoiseControlMode.DEEP -> 4
+                    NoiseControlMode.EXPERIMENT -> 5
+                    NoiseControlMode.WIND_SUPPRESSION -> 6
+                }
+                changeUIAncStatus(currentAnc)
             }
-            changeUIAncStatus(currentAnc)
             return
         }
 
@@ -588,11 +577,16 @@ object RfcommController {
         val windSuppressionResult = WindSuppressionParser.parse(packet)
         if (windSuppressionResult != null) {
             Log.d(TAG, "Wind suppression received: $windSuppressionResult")
+            val oldWindSuppression = currentWindSuppression
             currentWindSuppression = windSuppressionResult
             // 抗风噪也是ANC模式的一种，需要同步更新ANC状态
             if (windSuppressionResult) {
                 currentAnc = 6 // WIND_SUPPRESSION
                 changeUIAncStatus(currentAnc)
+            } else if (oldWindSuppression && currentAnc == 6) {
+                // 抗风噪关闭时，不要直接设置为OFF
+                // 等待ANC查询的响应来更新实际状态
+                // 这样可以确保从抗风噪切换到其他模式时状态正确同步
             }
             changeUIWindSuppressionStatus(windSuppressionResult)
             return
@@ -721,10 +715,19 @@ object RfcommController {
 
     fun setWindSuppression(enabled: Boolean) {
         Log.d(TAG, "setWindSuppression: $enabled")
+        val oldEnabled = currentWindSuppression
         currentWindSuppression = enabled
         val packet = if (enabled) Enums.WIND_SUPPRESSION_ON else Enums.WIND_SUPPRESSION_OFF
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(packet)
+        }
+        // 抗风噪开启时，设置ANC状态为抗风噪
+        if (enabled) {
+            currentAnc = 6 // WIND_SUPPRESSION
+            changeUIAncStatus(currentAnc)
+        } else if (oldEnabled && currentAnc == 6) {
+            // 抗风噪关闭时，不要直接设置为OFF
+            // 等待查询状态时的ANC响应来更新实际状态
         }
         changeUIWindSuppressionStatus(enabled)
     }
@@ -749,6 +752,8 @@ object RfcommController {
         CoroutineScope(Dispatchers.IO).launch {
             sendPacketSafe(Enums.QUERY_BATTERY)
             delay(50)
+            sendPacketSafe(OriGPackets.buildPacket(Op.WIND_SUPPRESSION_QUERY))
+            delay(50)
             sendPacketSafe(Enums.QUERY_ANC)
             delay(50)
             sendPacketSafe(Enums.QUERY_GAME_MODE)
@@ -758,8 +763,6 @@ object RfcommController {
             sendPacketSafe(OriGPackets.buildPacket(Op.DUAL_CONN_QUERY))
             delay(50)
             sendPacketSafe(OriGPackets.buildPacket(Op.EQ_QUERY))
-            delay(50)
-            sendPacketSafe(OriGPackets.buildPacket(Op.WIND_SUPPRESSION_QUERY))
             delay(50)
             sendPacketSafe(Enums.QUERY_IN_EAR_DETECTION)
         }

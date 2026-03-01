@@ -302,7 +302,12 @@ class AppRfcommController {
         val ancResult = AncModeParser.parse(packet)
         if (ancResult != null) {
             Log.d(TAG, "ANC mode received: $ancResult")
-            _ancMode.value = ancResult
+            // 只有当抗风噪开启时才忽略 ANC 响应
+            // 这样可以避免抗风噪开启时 ANC 查询返回 OFF 导致的闪烁
+            // 同时确保抗风噪关闭时能正确同步 ANC 状态
+            if (!_windSuppression.value) {
+                _ancMode.value = ancResult
+            }
             return
         }
 
@@ -337,7 +342,16 @@ class AppRfcommController {
         val windSuppressionResult = WindSuppressionParser.parse(packet)
         if (windSuppressionResult != null) {
             Log.d(TAG, "Wind suppression received: $windSuppressionResult")
+            val oldWindSuppression = _windSuppression.value
             _windSuppression.value = windSuppressionResult
+            // 抗风噪也是ANC模式的一种，需要同步更新ANC状态
+            if (windSuppressionResult) {
+                _ancMode.value = NoiseControlMode.WIND_SUPPRESSION
+            } else if (oldWindSuppression && _ancMode.value == NoiseControlMode.WIND_SUPPRESSION) {
+                // 抗风噪关闭时，不要直接设置为OFF
+                // 等待ANC查询的响应来更新实际状态
+                // 这样可以确保从抗风噪切换到其他模式时状态正确同步
+            }
             return
         }
 
@@ -383,6 +397,12 @@ class AppRfcommController {
             NoiseControlMode.WIND_SUPPRESSION -> Enums.ANC_WIND_SUPPRESSION
         }
         _ancMode.value = mode
+        // 抗风噪模式需要同步更新windSuppression状态
+        if (mode == NoiseControlMode.WIND_SUPPRESSION) {
+            _windSuppression.value = true
+        } else if (_windSuppression.value) {
+            _windSuppression.value = false
+        }
         scope.launch { sendPacket(packet) }
     }
 
@@ -410,7 +430,15 @@ class AppRfcommController {
     }
 
     fun setWindSuppression(enabled: Boolean) {
+        val oldEnabled = _windSuppression.value
         _windSuppression.value = enabled
+        // 抗风噪也是ANC模式的一种，需要同步更新ANC状态
+        if (enabled) {
+            _ancMode.value = NoiseControlMode.WIND_SUPPRESSION
+        } else if (oldEnabled && _ancMode.value == NoiseControlMode.WIND_SUPPRESSION) {
+            // 抗风噪关闭时，不要直接设置为OFF
+            // 等待查询状态时的ANC响应来更新实际状态
+        }
         val packet = if (enabled) Enums.WIND_SUPPRESSION_ON else Enums.WIND_SUPPRESSION_OFF
         scope.launch { sendPacket(packet) }
     }
@@ -425,6 +453,8 @@ class AppRfcommController {
         scope.launch {
             sendPacket(Enums.QUERY_BATTERY)
             delay(50)
+            sendPacket(OriGPackets.buildPacket(Op.WIND_SUPPRESSION_QUERY))
+            delay(50)
             sendPacket(Enums.QUERY_ANC)
             delay(50)
             sendPacket(Enums.QUERY_GAME_MODE)
@@ -434,8 +464,6 @@ class AppRfcommController {
             sendPacket(OriGPackets.buildPacket(Op.DUAL_CONN_QUERY))
             delay(50)
             sendPacket(OriGPackets.buildPacket(Op.EQ_QUERY))
-            delay(50)
-            sendPacket(OriGPackets.buildPacket(Op.WIND_SUPPRESSION_QUERY))
             delay(50)
             sendPacket(Enums.QUERY_IN_EAR_DETECTION)
         }
