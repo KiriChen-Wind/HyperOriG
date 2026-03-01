@@ -46,7 +46,7 @@ fun SettingsPage(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 100.dp)
+        contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         item {
             Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {

@@ -7,6 +7,7 @@
     <string name="based_on">基于</string>
     <string name="game_mode">游戏模式</string>
     <string name="game_mode_summary">针对游戏场景进行 EQ 优化，并大幅降低音频延迟，但这可能损失更多音频细节</string>
+    <string name="game_mode_summary_popup">针对游戏场景优化 EQ 与音频延迟</string>
     <string name="low_latency_mode">低延迟模式</string>
     <string name="low_latency_mode_summary">降低音频延迟，但这可能损失少许音频细节</string>
     <string name="dual_conn_mode">双设备连接</string>

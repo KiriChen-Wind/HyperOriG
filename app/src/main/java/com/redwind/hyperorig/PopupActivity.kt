@@ -274,7 +274,7 @@ private fun PopupContent(onMore: () -> Unit, onDone: () -> Unit) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     SuperSwitch(
                         title = stringResource(R.string.game_mode),
-                        summary = stringResource(R.string.game_mode_summary),
+                        summary = stringResource(R.string.game_mode_summary_popup),
                         checked = gameMode.value,
                         onCheckedChange = { setGameMode(it) }
                     )

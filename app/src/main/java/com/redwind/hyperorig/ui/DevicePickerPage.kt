@@ -152,14 +152,14 @@ fun DevicePickerPage(onDeviceSelected: (BluetoothDevice) -> Unit) {
         // 按设备名称排序，优先显示匹配的设备
         connected.sortedByDescending {
             val name = it.name?.lowercase() ?: ""
-            name.contains("yuandao") || name.contains("orig") || name.contains("nicehck")
+            name.contains("yuandao") || name.contains("orig")
         }
     }
     
     // 分组设备：已发现的设备和未识别的设备
     val (discoveredDevices, unidentifiedDevices) = connectedDevices.partition {
         val name = it.name?.lowercase() ?: ""
-        name.contains("yuandao") || name.contains("orig") || name.contains("nicehck")
+        name.contains("yuandao") || name.contains("orig")
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -184,7 +184,7 @@ fun DevicePickerPage(onDeviceSelected: (BluetoothDevice) -> Unit) {
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(bottom = 32.dp)
             ) {
                 if (connectedDevices.isEmpty()) {
                     item {

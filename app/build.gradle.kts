@@ -24,8 +24,8 @@ android {
         applicationId = "com.redwind.hyperorig"
         minSdk = 35
         targetSdk = 36
-        versionCode = 26030103
-        versionName = "1.2"
+        versionCode = 26030105
+        versionName = "1.4"
     }
 
     buildTypes {
