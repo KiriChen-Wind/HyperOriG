@@ -6,14 +6,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.Log
-import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.method
-import com.highcapable.yukihookapi.hook.type.android.ContextClass
-import de.robv.android.xposed.XposedHelpers
 import com.redwind.hyperorig.utils.miuiStrongToast.data.HyperOriGAction
 
-object DeviceCardHook : YukiBaseHooker() {
+object DeviceCardHook : HookContext() {
     @Volatile
     var mac = ""
 
@@ -34,70 +29,59 @@ object DeviceCardHook : YukiBaseHooker() {
         var isRegistered = false
 
         var panelController: Any? = null
-        "miui.systemui.controlcenter.panel.main.MainPanelController".toClass().method {
-            name = "onCreate"
-        }.hook {
-            after {
-                panelController = this.instance
-            }
+        hookAfter(findMethod("miui.systemui.controlcenter.panel.main.MainPanelController", "onCreate")) {
+            panelController = instance
         }
 
         fun hidePanel() {
             panelController?.let {
-                XposedHelpers.callMethod(panelController, "exitOrHide")
+                callMethod(panelController, "exitOrHide")
             }
         }
 
-        "miui.systemui.devicecenter.devices.DeviceInfoWrapper".toClass().apply {
-            method {
-                name = "performClicked"
-                param(ContextClass)
-            }.hook {
-                before {
-                    val context = this.args[0] as Context
-                    val deviceInfo = XposedHelpers.callMethod(this.instance, "getDeviceInfo")
-                    val id = XposedHelpers.callMethod(deviceInfo, "getId") as String
-                    val deviceType = XposedHelpers.callMethod(deviceInfo, "getDeviceType") as String
-                    if (deviceType != "third_headset") {
-                        return@before
-                    }
-
-                    if (!isRegistered) {
-                        context.registerReceiver(
-                            receiver,
-                            IntentFilter(HyperOriGAction.ACTION_PODS_MAC_RECEIVED),
-                            null,
-                            handler,
-                            Context.RECEIVER_EXPORTED,
-                        )
-                        isRegistered = true
-                    }
-
-                    Intent(HyperOriGAction.ACTION_GET_PODS_MAC).apply {
-                        this.`package` = "com.android.bluetooth"
-                        this.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-                        context.sendBroadcast(this)
-                    }
-
-                    var waitCnt = 10
-                    while (mac.isEmpty() && waitCnt-- > 0) {
-                        Thread.sleep(50)
-                    }
-
-                    if (mac == id) {
-                        Intent("com.redwind.hyperorig.action.show_pods_ui").apply {
-                            setClassName("com.redwind.hyperorig", "com.redwind.hyperorig.PopupActivity")
-                            this.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(this)
-                        }
-                        mac = ""
-                        hidePanel()
-                        this.result = null
-                    }
-
-                    Log.i("HyperOriG", "performClicked $id mac $mac")
-                }
+        hookBefore(findMethod("miui.systemui.devicecenter.devices.DeviceInfoWrapper", "performClicked", Context::class.java)) {
+            val context = args[0] as Context
+            val deviceInfo = callMethod(instance, "getDeviceInfo")
+            val id = callMethod(deviceInfo, "getId") as String
+            val deviceType = callMethod(deviceInfo, "getDeviceType") as String
+            if (deviceType != "third_headset") {
+                return@hookBefore
             }
+
+            if (!isRegistered) {
+                context.registerReceiver(
+                    receiver,
+                    IntentFilter(HyperOriGAction.ACTION_PODS_MAC_RECEIVED),
+                    null,
+                    handler,
+                    Context.RECEIVER_EXPORTED,
+                )
+                isRegistered = true
+            }
+
+            Intent(HyperOriGAction.ACTION_GET_PODS_MAC).apply {
+                this.`package` = "com.android.bluetooth"
+                this.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+                context.sendBroadcast(this)
+            }
+
+            var waitCnt = 10
+            while (mac.isEmpty() && waitCnt-- > 0) {
+                Thread.sleep(50)
+            }
+
+            if (mac == id) {
+                Intent("com.redwind.hyperorig.action.show_pods_ui").apply {
+                    setClassName("com.redwind.hyperorig", "com.redwind.hyperorig.PopupActivity")
+                    this.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(this)
+                }
+                mac = ""
+                hidePanel()
+                result = null
+            }
+
+            Log.i("HyperOriG", "performClicked $id mac $mac")
         }
     }
 }

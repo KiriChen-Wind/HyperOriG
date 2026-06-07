@@ -1,50 +1,34 @@
 package com.redwind.hyperorig.hook
 
-import android.util.Log
-import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.method
-import de.robv.android.xposed.XposedHelpers
+object SystemUIPluginHook : HookContext() {
+    private var pluginLoaderClassLoader: ClassLoader? = null
 
-
-object SystemUIPluginHook : YukiBaseHooker() {
     override fun onHook() {
-        var pluginLoaderClassLoader: ClassLoader? = null
-
-        fun loadPluginHooker(hooker: YukiBaseHooker) {
-            hooker.appClassLoader = pluginLoaderClassLoader
-            loadHooker(hooker)
-        }
-
-        fun initPluginHook() {
-            loadPluginHooker(DeviceCardHook)
-        }
-
-        // Load plugin hooker
-        // get Classloader for plugin on Android U
-        "com.android.systemui.shared.plugins.PluginInstance".toClass().method {
-            name = "loadPlugin"
-        }.hook {
-            after {
-                val pkgName = XposedHelpers.callMethod(this.instance, "getPackage")
-                if (pkgName == "miui.systemui.plugin") {
-                    val factory =
-                        XposedHelpers.getObjectField(this.instance, "mPluginFactory")
-                    val clsLoader = XposedHelpers.callMethod(
-                        XposedHelpers.getObjectField(
-                            factory,
-                            "mClassLoaderFactory"
-                        ), "get"
-                    ) as ClassLoader
-                    if (pluginLoaderClassLoader != clsLoader) {
-                        Log.i(
-                            "HyperOriG",
-                            "[loadPlugin] initPluginHook"
-                        )
-                        pluginLoaderClassLoader = clsLoader
-                        initPluginHook()
-                    }
+        // Hook PluginInstance.loadPlugin to get the plugin classloader on Android U+
+        hookAfter(findMethod("com.android.systemui.shared.plugins.PluginInstance", "loadPlugin")) {
+            val pkgName = callMethod(instance, "getPackage") as? String
+            if (pkgName == "miui.systemui.plugin") {
+                val factory = getObjectField(instance, "mPluginFactory")
+                val clsLoader = callMethod(
+                    getObjectField(factory, "mClassLoaderFactory"),
+                    "get"
+                ) as ClassLoader
+                if (pluginLoaderClassLoader != clsLoader) {
+                    Log.i("HyperOriG", "[loadPlugin] initPluginHook")
+                    pluginLoaderClassLoader = clsLoader
+                    initDeviceCardHook()
                 }
             }
         }
+    }
+
+    private fun initDeviceCardHook() {
+        val classLoader = pluginLoaderClassLoader ?: return
+        val deviceCardHook = DeviceCardHook
+        deviceCardHook.module = module
+        deviceCardHook.appClassLoader = classLoader
+        deviceCardHook.packageName = packageName
+        deviceCardHook.prefs = prefs
+        deviceCardHook.onHook()
     }
 }

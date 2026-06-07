@@ -34,7 +34,7 @@
     <string name="noise_cancellation_deep">深度</string>
     <string name="noise_cancellation_experiment">试验性</string>
     <string name="transparency_title">通透</string>
-    <string name="pod_case">耳机盒</string>
+    <string name="pod_case">充电盒</string>
     <string name="batt_left_pod">左</string>
     <string name="batt_right_pod">右</string>
     <string name="waiting_for_pod">等待 OriG in 连接...</string>
@@ -63,4 +63,12 @@
     <string name="theme_follow_system">跟随系统</string>
     <string name="theme_light">浅色</string>
     <string name="theme_dark">深色</string>
+    <string name="cycle_anc">切换降噪</string>
+    <string name="notification_btn_disconnect">断开连接</string>
+    <string name="anc_notif_off">降噪关闭</string>
+    <string name="anc_notif_nc">降噪模式</string>
+    <string name="anc_notif_deep">深度降噪</string>
+    <string name="anc_notif_experiment">实验性降噪</string>
+    <string name="anc_notif_transparency">通透模式</string>
+    <string name="anc_notif_wind">抗风噪模式</string>
 </resources>

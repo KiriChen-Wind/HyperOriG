@@ -6,16 +6,33 @@
 
     <queries>
         <package android:name="com.yuandao.nicehck" />
+        <package android:name="com.android.settings" />
     </queries>
 
     <application
+        android:name=".HyperOriGApp"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:description="@string/app_subtitle"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:extractNativeLibs="false"
         android:enableOnBackInvokedCallback="false"
         android:supportsRtl="true"
         android:theme="@style/Theme.HyperOriG">
+
+        <activity-alias
+            android:name=".LauncherActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <activity android:name=".MainActivity"
             android:launchMode="singleTask"
@@ -23,7 +40,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
             </intent-filter>
         </activity>
         <activity android:name=".PopupActivity"
@@ -49,7 +66,7 @@
         <!-- The minimum Xposed version number -->
         <meta-data
             android:name="xposedminversion"
-            android:value="93" />
+            android:value="101" />
         <meta-data
             android:name="xposedscope"
             android:resource="@array/xposedscope" />

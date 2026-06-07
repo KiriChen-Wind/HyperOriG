@@ -10,13 +10,25 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.toArgb
 import com.redwind.hyperorig.ui.App
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
+
+        val openDetail = intent.getBooleanExtra("open_detail", false)
+        val prefs = getSharedPreferences("hyperorig_settings", Context.MODE_PRIVATE)
+        val themeModeValue = prefs.getInt("theme_mode", 0)
+        val isDark = when (themeModeValue) {
+            1 -> false
+            2 -> true
+            else -> resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        val bgColor = if (isDark) Color.BLACK else Color.WHITE
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bgColor))
+        window.decorView.setBackgroundColor(bgColor)
 
         setContent {
             val prefs = remember { getSharedPreferences("hyperorig_settings", Context.MODE_PRIVATE) }
@@ -40,7 +52,8 @@ class MainActivity : ComponentActivity() {
                 onThemeModeChange = {
                     themeMode.value = it
                     prefs.edit().putInt("theme_mode", it).apply()
-                }
+                },
+                openDetail = openDetail
             )
         }
     }

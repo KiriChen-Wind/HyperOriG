@@ -5,7 +5,7 @@ import android.app.NotificationManager
 import android.app.StatusBarManager
 import android.bluetooth.BluetoothDevice
 import android.os.UserHandle
-import de.robv.android.xposed.XposedHelpers
+import com.redwind.hyperorig.hook.callMethod
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -35,27 +35,27 @@ object SystemApisUtils {
     const val BATTERY_LEVEL_UNKNOWN: Int = -1
 
     fun getUserAllUserHandle(): UserHandle {
-        return XposedHelpers.getStaticObjectField(UserHandle::class.java, "ALL") as UserHandle
+        return UserHandle::class.java.getDeclaredField("ALL").apply { isAccessible = true }.get(null) as UserHandle
     }
 
     fun BluetoothDevice.getMetadata(key: Int): ByteArray? {
-        return XposedHelpers.callMethod(this, "getMetadata", key) as ByteArray?
+        return callMethod(this, "getMetadata", key) as ByteArray?
     }
 
     fun BluetoothDevice.setMetadata(key: Int, value: ByteArray): Boolean {
-        return XposedHelpers.callMethod(this, "setMetadata", key, value) as Boolean
+        return callMethod(this, "setMetadata", key, value) as Boolean
     }
 
     fun NotificationManager.notifyAsUser(tag: String, id: Int, notification: Notification, userHandle: UserHandle) {
-        XposedHelpers.callMethod(this, "notifyAsUser", tag, id, notification, userHandle)
+        callMethod(this, "notifyAsUser", tag, id, notification, userHandle)
     }
 
     fun NotificationManager.cancelAsUser(tag: String, id: Int, userHandle: UserHandle) {
-        XposedHelpers.callMethod(this, "cancelAsUser", tag, id, userHandle)
+        callMethod(this, "cancelAsUser", tag, id, userHandle)
     }
 
     fun StatusBarManager.setIconVisibility(iconName: String, show: Boolean) {
-        XposedHelpers.callMethod(this, "setIconVisibility", iconName, show)
+        callMethod(this, "setIconVisibility", iconName, show)
     }
 
     private fun getPropByShell(propName: String): String {

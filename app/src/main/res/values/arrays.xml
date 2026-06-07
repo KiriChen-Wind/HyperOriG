@@ -2,7 +2,9 @@
 <resources>
     <string-array name="xposedscope">
         <item>com.android.bluetooth</item>
+        <item>com.milink.service</item>
         <item>com.xiaomi.bluetooth</item>
         <item>com.android.systemui</item>
+        <item>com.android.settings</item>
     </string-array>
 </resources>

@@ -15,9 +15,10 @@ import android.media.AudioManager
 import android.media.MediaRoute2Info
 import android.media.MediaRouter2
 import android.media.RouteDiscoveryPreference
-import android.util.Log
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
-import de.robv.android.xposed.XposedHelpers
+import android.content.SharedPreferences
+import com.redwind.hyperorig.hook.Log
+import com.redwind.hyperorig.hook.getObjectField
+import com.redwind.hyperorig.hook.callMethod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -58,11 +59,19 @@ object RfcommController {
     private val audioManager: AudioManager? by lazy {
         mContext?.getSystemService(AudioManager::class.java)
     }
-    private lateinit var mPrefsBridge: YukiHookPrefsBridge
+    private lateinit var mPrefs: SharedPreferences
 
     private var scanToken: MediaRouter2.ScanToken? = null
     var routes: List<MediaRoute2Info> = listOf()
     private lateinit var mediaRouter: MediaRouter2
+
+    data class StatusSnapshot(
+        val battery: BatteryParams?,
+        val anc: Int,
+        val transparencyVocalEnhancement: Boolean,
+        val address: String?,
+        val deviceName: String?
+    )
 
     private var mShowedConnectedToast = false
     private var isConnected = false
@@ -102,20 +111,58 @@ object RfcommController {
     private fun changeUIAncStatus(status: Int) {
         if (status < 1 || status > 6) return
         Intent(HyperOriGAction.ACTION_PODS_ANC_CHANGED).apply {
+            if (::mDevice.isInitialized) this.putExtra("address", mDevice.address)
             this.putExtra("status", status)
             this.`package` = BuildConfig.APPLICATION_ID
             this.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             mContext!!.sendBroadcast(this)
+        }
+        sendExternalPodsStatusBroadcast(HyperOriGAction.ACTION_PODS_ANC_CHANGED) {
+            putExtra("status", status)
         }
     }
 
     private fun changeUIBatteryStatus(status: BatteryParams) {
         Intent(HyperOriGAction.ACTION_PODS_BATTERY_CHANGED).apply {
+            if (::mDevice.isInitialized) this.putExtra("address", mDevice.address)
             this.putExtra("status", status)
+            putBatteryExtras(status)
             this.`package` = BuildConfig.APPLICATION_ID
             this.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             mContext!!.sendBroadcast(this)
         }
+        sendExternalPodsStatusBroadcast(HyperOriGAction.ACTION_PODS_BATTERY_CHANGED) {
+            putExtra("status", status)
+            putBatteryExtras(status)
+        }
+    }
+
+    private fun sendExternalPodsStatusBroadcast(action: String, fill: Intent.() -> Unit = {}) {
+        val ctx = mContext ?: return
+        listOf("com.milink.service", "com.xiaomi.bluetooth", "com.android.settings").forEach { targetPackage ->
+            Intent(action).apply {
+                if (::mDevice.isInitialized) {
+                    putExtra("address", mDevice.address)
+                    putExtra("device_name", mDevice.name)
+                }
+                fill()
+                setPackage(targetPackage)
+                addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+                ctx.sendBroadcast(this)
+            }
+        }
+    }
+
+    private fun Intent.putBatteryExtras(status: BatteryParams) {
+        putExtra("left_battery", status.left?.battery ?: 0)
+        putExtra("left_charging", status.left?.isCharging == true)
+        putExtra("left_connected", status.left?.isConnected == true)
+        putExtra("right_battery", status.right?.battery ?: 0)
+        putExtra("right_charging", status.right?.isCharging == true)
+        putExtra("right_connected", status.right?.isConnected == true)
+        putExtra("case_battery", status.case?.battery ?: 0)
+        putExtra("case_charging", status.case?.isCharging == true)
+        putExtra("case_connected", status.case?.isConnected == true)
     }
 
     private fun changeUIGameModeStatus(enabled: Boolean) {
@@ -172,6 +219,51 @@ object RfcommController {
         }
     }
 
+    fun currentStatusSnapshot(): StatusSnapshot {
+        return StatusSnapshot(
+            battery = if (::currentBatteryParams.isInitialized) currentBatteryParams else null,
+            anc = currentAnc,
+            transparencyVocalEnhancement = false,
+            address = if (::mDevice.isInitialized) mDevice.address else null,
+            deviceName = if (::mDevice.isInitialized) mDevice.name else null
+        )
+    }
+
+    fun currentMiuiRefreshPayload(): String {
+        return miuiRefreshPayload(currentStatusSnapshot().battery, currentAnc)
+    }
+
+    fun miuiRefreshPayload(battery: BatteryParams?, anc: Int, transparencyVocalEnhancement: Boolean = false): String {
+        val values = MutableList(16) { "" }
+        values[0] = miuiBatteryValue(battery?.left)
+        values[1] = miuiBatteryValue(battery?.right)
+        values[2] = miuiBatteryValue(battery?.case)
+        values[7] = miuiAncLevel(anc)
+        values[8] = "true"
+        values[11] = "00"
+        values[13] = "00"
+        values[14] = "00"
+        return values.joinToString(",")
+    }
+
+    private fun miuiBatteryValue(params: PodParams?): String {
+        if (params?.isConnected != true) return "255"
+        val value = params.battery.coerceIn(0, 100)
+        return (if (params.isCharging) value or 128 else value).toString()
+    }
+
+    private fun miuiAncLevel(anc: Int): String {
+        return when (anc) {
+            5 -> "0103"
+            6 -> "0101"
+            7 -> "0100"
+            8 -> "0102"
+            2 -> "0200"
+            3 -> "0200"
+            else -> "0000"
+        }
+    }
+
     fun handleUIEvent(intent: Intent) {
         when (intent.action) {
             HyperOriGAction.ACTION_PODS_UI_INIT -> {
@@ -179,6 +271,7 @@ object RfcommController {
                 val deviceName = mDevice.alias ?: mDevice.name ?: mDevice.address
                 Intent(HyperOriGAction.ACTION_PODS_CONNECTED).apply {
                     this.putExtra("device_name", deviceName)
+                    this.putExtra("address", mDevice.address)
                     mContext!!.sendBroadcast(this)
                 }
                 // 保存设备名称到缓存
@@ -368,10 +461,10 @@ object RfcommController {
         }
     }
 
-    fun connectPod(context: Context, device: BluetoothDevice, prefsBridge: YukiHookPrefsBridge) {
+    fun connectPod(context: Context, device: BluetoothDevice, prefs: SharedPreferences) {
         mContext = context
         mDevice = device
-        mPrefsBridge = prefsBridge
+        mPrefs = prefs
 
         // 初始化电池缓存
         initBatteryCache(context)
@@ -391,8 +484,14 @@ object RfcommController {
 
         val deviceName = device.alias ?: device.name ?: device.address
         Intent(HyperOriGAction.ACTION_PODS_CONNECTED).apply {
+            this.putExtra("address", mDevice.address)
             this.putExtra("device_name", deviceName)
+            this.`package` = BuildConfig.APPLICATION_ID
+            this.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             context.sendBroadcast(this)
+        }
+        sendExternalPodsStatusBroadcast(HyperOriGAction.ACTION_PODS_CONNECTED) {
+            putExtra("device_name", deviceName)
         }
         // 保存设备名称到缓存
         val prefs = context.getSharedPreferences("hyperorig_device", Context.MODE_PRIVATE)
@@ -618,8 +717,10 @@ object RfcommController {
             stopRoutesScan()
             cancelPodsNotificationByMiuiBt(context, device)
             Intent(HyperOriGAction.ACTION_PODS_DISCONNECTED).apply {
+                if (::mDevice.isInitialized) this.putExtra("address", mDevice.address)
                 context.sendBroadcast(this)
             }
+            sendExternalPodsStatusBroadcast(HyperOriGAction.ACTION_PODS_DISCONNECTED)
             it.unregisterReceiver(broadcastReceiver)
         }
 
@@ -835,8 +936,8 @@ object RfcommController {
 
     fun setRegularBatteryLevel(level: Int) {
         try {
-            val service = XposedHelpers.getObjectField(mContext, "mAdapterService")
-            XposedHelpers.callMethod(service, "setBatteryLevel", mDevice, level, false)
+            val service = getObjectField(mContext, "mAdapterService")
+            callMethod(service, "setBatteryLevel", mDevice, level, false)
         } catch (e: Exception) {
             Log.e(TAG, "setRegularBatteryLevel failed", e)
         }

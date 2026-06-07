@@ -8,7 +8,8 @@ import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 @Composable
 fun App(
     themeMode: MutableState<Int> = mutableStateOf(0),
-    onThemeModeChange: (Int) -> Unit = {}
+    onThemeModeChange: (Int) -> Unit = {},
+    openDetail: Boolean = false
 ) {
     val colorSchemeMode = when (themeMode.value) {
         1 -> ColorSchemeMode.Light
@@ -16,6 +17,6 @@ fun App(
         else -> ColorSchemeMode.System
     }
     AppTheme(colorSchemeMode = colorSchemeMode) {
-        MainUI(themeMode = themeMode, onThemeModeChange = onThemeModeChange)
+        MainUI(themeMode = themeMode, onThemeModeChange = onThemeModeChange, openDetail = openDetail)
     }
 }

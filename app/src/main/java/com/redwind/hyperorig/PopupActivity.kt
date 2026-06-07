@@ -60,10 +60,16 @@ class PopupActivity : ComponentActivity() {
                             if (intent != null) {
                                 startActivity(intent)
                             } else {
-                                startActivity(Intent(this@PopupActivity, MainActivity::class.java))
+                                startActivity(Intent(this@PopupActivity, MainActivity::class.java).apply {
+                                    putExtra("open_detail", true)
+                                    addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                                })
                             }
                         } else {
-                            startActivity(Intent(this@PopupActivity, MainActivity::class.java))
+                            startActivity(Intent(this@PopupActivity, MainActivity::class.java).apply {
+                                putExtra("open_detail", true)
+                                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                            })
                         }
                         finish()
                     },

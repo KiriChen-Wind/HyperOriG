@@ -22,4 +22,10 @@ object HyperOriGAction {
     const val ACTION_PODS_WIND_SUPPRESSION_CHANGED = "com.redwind.hyperorig.action.pods_wind_suppression_changed"
     const val ACTION_IN_EAR_DETECTION_SET = "com.redwind.hyperorig.action.in_ear_detection_set"
     const val ACTION_PODS_IN_EAR_DETECTION_CHANGED = "com.redwind.hyperorig.action.pods_in_ear_detection_changed"
+    const val ACTION_TRANSPARENCY_VOCAL_ENHANCEMENT_SET = "com.redwind.hyperorig.action.transparency_vocal_enhancement_set"
+    const val ACTION_PODS_TRANSPARENCY_VOCAL_ENHANCEMENT_CHANGED = "com.redwind.hyperorig.action.pods_transparency_vocal_enhancement_changed"
+    const val ACTION_CYCLE_ANC = "com.redwind.hyperorig.action.cycle_anc"
+    const val ACTION_ADAPTIVE_MODE_CHANGED = "com.redwind.hyperorig.action.adaptive_mode_changed"
+    const val ACTION_CONFIG_CHANGED = "com.redwind.hyperorig.action.config_changed"
+    const val ACTION_WARMUP = "com.redwind.hyperorig.action.warmup"
 }

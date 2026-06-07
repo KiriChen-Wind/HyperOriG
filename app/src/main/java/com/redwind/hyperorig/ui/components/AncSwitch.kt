@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -72,7 +73,7 @@ fun AncSwitch(ancStatus: NoiseControlMode, onAncModeChange: (NoiseControlMode) -
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 10.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -80,6 +81,8 @@ fun AncSwitch(ancStatus: NoiseControlMode, onAncModeChange: (NoiseControlMode) -
         ) {
             AncButton(
                 iconRes = R.drawable.ic_transparency,
+                iconResOn = R.drawable.ic_transparency_on,
+                iconResDark = R.drawable.ic_transparency_dark,
                 label = stringResource(R.string.transparency_title),
                 isSelected = isTransparentMode,
                 isDarkMode = isDarkMode,
@@ -90,7 +93,9 @@ fun AncSwitch(ancStatus: NoiseControlMode, onAncModeChange: (NoiseControlMode) -
                 modifier = Modifier.weight(1f)
             )
             AncButton(
-                iconRes = R.drawable.ic_anc,
+                iconRes = R.drawable.ic_normal,
+                iconResOn = R.drawable.ic_normal_on,
+                iconResDark = R.drawable.ic_normal_dark,
                 label = stringResource(R.string.noise_cancellation_title),
                 isSelected = isAncMode,
                 isDarkMode = isDarkMode,
@@ -102,6 +107,8 @@ fun AncSwitch(ancStatus: NoiseControlMode, onAncModeChange: (NoiseControlMode) -
             )
             AncButton(
                 iconRes = R.drawable.ic_wind,
+                iconResOn = R.drawable.ic_wind_on,
+                iconResDark = R.drawable.ic_wind_dark,
                 label = stringResource(R.string.wind_suppression_mode),
                 isSelected = isWindMode,
                 isDarkMode = isDarkMode,
@@ -429,6 +436,8 @@ private fun SimpleAncSlider(
 @Composable
 private fun AncButton(
     iconRes: Int,
+    iconResOn: Int,
+    iconResDark: Int,
     label: String,
     isSelected: Boolean,
     isDarkMode: Boolean,
@@ -437,11 +446,11 @@ private fun AncButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val view = LocalView.current
+    val activeColor = Color(0xFF0D84FF)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .pressable(interactionSource = interactionSource, indication = SinkFeedback())
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -451,38 +460,27 @@ private fun AncButton(
                 }
             )
     ) {
+        val currentIcon = when {
+            isSelected -> iconResOn
+            isDarkMode -> iconResDark
+            else -> iconRes
+        }
         Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(
-                    when {
-                        isSelected -> MiuixTheme.colorScheme.primary
-                        isDarkMode -> Color(0xFF3C3C3C)
-                        else -> Color(0xFFE8E8E8)
-                    }
-                ),
+            modifier = Modifier.size(60.dp),
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(iconRes),
+                painter = painterResource(currentIcon),
                 contentDescription = label,
-                colorFilter = ColorFilter.tint(
-                    when {
-                        isSelected -> Color.White
-                        isDarkMode -> Color.LightGray
-                        else -> Color(0xFF5E5E5E)
-                    }
-                ),
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(if (isSelected) 60.dp else 48.dp)
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (isSelected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onBackground
+            color = if (isSelected) activeColor else MiuixTheme.colorScheme.onBackground
         )
     }
 }

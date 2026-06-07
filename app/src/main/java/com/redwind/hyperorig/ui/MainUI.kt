@@ -18,6 +18,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,7 +83,8 @@ sealed interface Screen : NavKey {
 @Composable
 fun MainUI(
     themeMode: MutableState<Int> = mutableStateOf(0),
-    onThemeModeChange: (Int) -> Unit = {}
+    onThemeModeChange: (Int) -> Unit = {},
+    openDetail: Boolean = false
 ) {
     val backStack = remember { mutableStateListOf<Screen>(Screen.Home) }
     val context = LocalContext.current
@@ -88,7 +92,10 @@ fun MainUI(
     val mainTitle = remember { mutableStateOf("") }
     val batteryParams = remember { mutableStateOf(BatteryParams()) }
     val ancMode = remember { mutableStateOf(NoiseControlMode.OFF) }
-    val hookConnected = remember { mutableStateOf(false) }
+    val hookConnected = remember { mutableStateOf(openDetail) }
+    val hookDeviceAddress = remember { mutableStateOf<String?>(null) }
+    // 从外部入口（控制窗/互联浮窗）进入时，隐藏返回按钮
+    val isExternalEntry = remember { mutableStateOf(openDetail) }
     val gameMode = remember { mutableStateOf(false) }
     val lowLatencyMode = remember { mutableStateOf(false) }
     val dualConnMode = remember { mutableStateOf(false) }
@@ -166,14 +173,18 @@ fun MainUI(
 
                     HyperOriGAction.ACTION_PODS_CONNECTED -> {
                         val deviceName = p1.getStringExtra("device_name")
+                        val address = p1.getStringExtra("address")
                         mainTitle.value = deviceName ?: ""
                         hookConnected.value = true
-                        Log.i("HyperOriG", "pod connected via hook: $deviceName")
+                        hookDeviceAddress.value = address
+                        Log.i("HyperOriG", "pod connected via hook: $deviceName addr=$address")
                     }
 
                     HyperOriGAction.ACTION_PODS_DISCONNECTED -> {
                         mainTitle.value = ""
                         hookConnected.value = false
+                        hookDeviceAddress.value = null
+                        isExternalEntry.value = false
                         if (p0 is MainActivity) {
                             p0.finish()
                         }
@@ -350,6 +361,16 @@ fun MainUI(
     }
 
     fun onDeviceSelected(device: BluetoothDevice) {
+        val address = runCatching { device.address }.getOrNull()
+        Log.d("HyperOriG", "onDeviceSelected: address=$address hookAddr=${hookDeviceAddress.value} hookConn=${hookConnected.value}")
+        // 如果该设备已通过 LSP 模式连接，直接进入控制页面，不走独立模式
+        if (address != null && address == hookDeviceAddress.value) {
+            hookConnected.value = true
+            mainTitle.value = runCatching { device.alias ?: device.name }.getOrNull() ?: ""
+            Log.d("HyperOriG", "onDeviceSelected: LSP already connected, skip standalone")
+            return
+        }
+        Log.d("HyperOriG", "onDeviceSelected: starting standalone connect")
         appController.connect(device, autoGameMode = autoGameMode.value)
     }
 
@@ -476,7 +497,7 @@ fun MainUI(
                         largeTitle = homeTitle,
                         scrollBehavior = topAppBarScrollBehavior,
                         navigationIcon = {
-                            if (canShowDetailPage || isConnecting || isError) {
+                            if ((canShowDetailPage || isConnecting || isError) && !isExternalEntry.value) {
                                 IconButton(
                                     onClick = {
                                         // 返回到设备选择界面
@@ -510,6 +531,27 @@ fun MainUI(
                     )
                 }
             ) { padding ->
+                // 从设置页直接进入时跳过 AnimatedContent，避免白屏闪烁
+                if (openDetail && canShowDetailPage) {
+                    Box(modifier = Modifier.padding(top = padding.calculateTopPadding())) {
+                        LaunchedEffect(Unit) { refreshStatus() }
+                        PodDetailPage(
+                            batteryParams = displayBattery,
+                            ancMode = displayAnc,
+                            onAncModeChange = { setAncMode(it) },
+                            gameMode = displayGameMode,
+                            onGameModeChange = { setGameMode(it) },
+                            lowLatencyMode = displayLowLatencyMode,
+                            onLowLatencyModeChange = { setLowLatencyMode(it) },
+                            dualConnMode = displayDualConnMode,
+                            onDualConnModeChange = { setDualConnMode(it) },
+                            eqMode = displayEqMode,
+                            onEqModeChange = { setEqMode(it) },
+                            inEarDetection = displayInEarDetection,
+                            onInEarDetectionChange = { setInEarDetection(it) }
+                        )
+                    }
+                } else {
                 AnimatedContent(
                     targetState = when {
                         canShowDetailPage -> "detail"
@@ -517,7 +559,15 @@ fun MainUI(
                         isError -> "error"
                         else -> "picker"
                     },
-                    label = "MainPageAnim"
+                    label = "MainPageAnim",
+                    // 从设置页直接进入时跳过过渡动画
+                    transitionSpec = {
+                        if (openDetail && targetState == "detail") {
+                            fadeIn(animationSpec = tween(0)) togetherWith fadeOut(animationSpec = tween(0))
+                        } else {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        }
+                    }
                 ) { state ->
                     Box(modifier = Modifier.padding(top = padding.calculateTopPadding())) {
                         when (state) {
@@ -554,6 +604,7 @@ fun MainUI(
                         }
                     }
                 }
+                } // else AnimatedContent
             }
         }
         entry<Screen.Settings> {

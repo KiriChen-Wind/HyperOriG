@@ -112,7 +112,7 @@ fun SettingsPage(
                     title = "加入内部测试、问题报告",
                 )
                 BasicComponent(
-                    title = "陈有为私房菜",
+                    title = "AAA陈皮糖批发市场",
                     summary = "官方 Q Group",
                     onClick = {
                         Intent(Intent.ACTION_VIEW).apply {
@@ -171,6 +171,16 @@ fun SettingsPage(
                     }
                 )
                 BasicComponent(
+                    title = "OppoPods-Enhanced",
+                    summary = "https://github.com/1812z/OppoPods",
+                    onClick = {
+                        Intent(Intent.ACTION_VIEW).apply {
+                            this.data = Uri.parse("https://github.com/1812z/OppoPods")
+                            context.startActivity(this)
+                        }
+                    }
+                )
+                BasicComponent(
                     title = "NiceHCK Controller",
                     summary = "https://github.com/ZaeXT/NiceHCK_Controller",
                     onClick = {
@@ -191,11 +201,11 @@ fun SettingsPage(
                     }
                 )
                 BasicComponent(
-                    title = "Yuki Hook API",
-                    summary = "https://github.com/HighCapable/YukiHookAPI",
+                    title = "LibXposed API",
+                    summary = "https://github.com/libxposed/api",
                     onClick = {
                         Intent(Intent.ACTION_VIEW).apply {
-                            this.data = Uri.parse("https://github.com/HighCapable/YukiHookAPI")
+                            this.data = Uri.parse("https://github.com/libxposed/api")
                             context.startActivity(this)
                         }
                     }

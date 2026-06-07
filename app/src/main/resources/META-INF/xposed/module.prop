@@ -1,0 +1,5 @@
+name=HyperOriG
+description=为 NickHCK YuanDao OriG in 耳机接入 Xiaomi HyperOS
+minApiVersion=101
+targetApiVersion=101
+staticScope=true

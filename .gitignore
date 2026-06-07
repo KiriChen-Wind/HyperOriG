@@ -1,18 +1,24 @@
+# IDE Configuration
+.idea/
+.vscode/
 *.iml
-.gradle
+
+# Gradle
+.gradle/
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
 local.properties
+
+# Build Output
+/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# macOS
+.DS_Store
+
+# Android Release Builds
+app/release/
 
 # Ignore tmp file for yuki hook api
 assets/xposed_init

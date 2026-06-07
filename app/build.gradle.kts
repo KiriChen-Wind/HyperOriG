@@ -24,8 +24,8 @@ android {
         applicationId = "com.redwind.hyperorig"
         minSdk = 35
         targetSdk = 36
-        versionCode = 26030202
-        versionName = "1.5.1"
+        versionCode = 260607
+        versionName = "2.0.1-alpha"
     }
 
     buildTypes {
@@ -88,9 +88,8 @@ configurations.configureEach {
 
 dependencies {
     implementation(libs.coreKtx)
-    compileOnly(libs.xposedApi)
-    implementation(libs.yukihookApi)
-    ksp(libs.yukihookKsp)
+    compileOnly(libs.libxposedApi)
+    implementation(libs.libxposedService)
     implementation(libs.kotlinx.serialization.json)
 
     // Compose
@@ -108,4 +107,7 @@ dependencies {
 
     // Navigation3
     implementation(libs.navigation3.runtime)
+
+    // HyperOS Focus Island API
+    implementation(libs.focus.api)
 }

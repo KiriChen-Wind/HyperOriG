@@ -7,13 +7,12 @@ import android.app.NotificationManager
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import com.xzakota.hyper.notification.focus.FocusNotification
 import com.redwind.hyperorig.R
+import com.redwind.hyperorig.hook.Log
 import com.redwind.hyperorig.utils.miuiStrongToast.data.BatteryParams
-import org.json.JSONObject
 
 @SuppressLint("WrongConstant")
 object FocusIslandUtil {
@@ -22,7 +21,6 @@ object FocusIslandUtil {
     private const val CHANNEL_NAME = "HyperOriG Battery"
     private const val NOTIFICATION_ID = 10086
     private const val MODULE_PACKAGE = "com.redwind.hyperorig"
-    private const val ISLAND_TIMEOUT_SECONDS = 3
     private const val DISMISS_DELAY_MS = 4000L
 
     fun showBatteryIsland(context: Context, batteryParams: BatteryParams): Boolean {
@@ -30,13 +28,11 @@ object FocusIslandUtil {
             val leftConnected = batteryParams.left?.isConnected == true
             val rightConnected = batteryParams.right?.isConnected == true
 
-            // Need at least one ear connected
             if (!leftConnected && !rightConnected) return false
 
             val leftText = if (leftConnected) "${batteryParams.left!!.battery}" else "-"
             val rightText = if (rightConnected) "${batteryParams.right!!.battery}" else "-"
 
-            // 从模块 APK 加载耳机图片为 Bitmap，避免跨包资源引用问题
             val moduleContext = context.createPackageContext(
                 MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY
             )
@@ -48,39 +44,72 @@ object FocusIslandUtil {
                 return false
             }
 
-            // 使用 createWithBitmap 直接嵌入图片数据，SystemUI 无需再访问模块资源
             val leftIcon = Icon.createWithBitmap(leftBitmap)
             val rightIcon = Icon.createWithBitmap(rightBitmap)
 
-            val json = buildIslandJson(leftText, rightText)
-
-            val picsBundle = Bundle().apply {
-                putParcelable("miui.focus.pic_left", leftIcon)
-                putParcelable("miui.focus.pic_right", rightIcon)
-            }
-
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
+                NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
                     setSound(null, null)
                     enableVibration(false)
+                    setAllowBubbles(true)
                 }
             )
 
             val contentParts = mutableListOf<String>()
             if (leftConnected) contentParts.add("L: ${batteryParams.left!!.battery}%")
             if (rightConnected) contentParts.add("R: ${batteryParams.right!!.battery}%")
+            val contentText = contentParts.joinToString("  ")
+
+            val extras = FocusNotification.buildV3 {
+                val picLeft = createPicture("key_pic_left", leftIcon)
+                val picRight = createPicture("key_pic_right", rightIcon)
+
+                enableFloat = true
+                ticker = "HyperOriG"
+                tickerPic = picLeft
+
+                isShowNotification = false
+                island {
+                    islandProperty = 1
+                    bigIslandArea {
+                        imageTextInfoLeft {
+                            type = 1
+                            picInfo {
+                                type = 1
+                                pic = picLeft
+                            }
+                            textInfo {
+                                title = leftText
+                                content = "%"
+                            }
+                        }
+                        imageTextInfoRight {
+                            type = 2
+                            picInfo {
+                                type = 1
+                                pic = picRight
+                            }
+                            textInfo {
+                                title = rightText
+                                content = "%"
+                            }
+                        }
+                    }
+                    shareData {
+                        title = "HyperOriG"
+                        content = contentText
+                        shareContent = contentText
+                    }
+                }
+            } ?: return false
 
             val notification = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
                 .setContentTitle("HyperOriG")
-                .setContentText(contentParts.joinToString("  "))
-                .addExtras(Bundle().apply {
-                    putString("miui.focus.param", json)
-                    putBundle("miui.focus.pics", picsBundle)
-                })
+                .setContentText(contentText)
+                .setTicker("HyperOriG")
+                .addExtras(extras)
                 .build()
 
             nm.notify(NOTIFICATION_ID, notification)
@@ -95,45 +124,5 @@ object FocusIslandUtil {
             Log.e(TAG, "Failed to show Focus Island", e)
             return false
         }
-    }
-
-    private fun buildIslandJson(leftText: String, rightText: String): String {
-        return JSONObject().apply {
-            put("param_v2", JSONObject().apply {
-                put("protocol", 3)
-                put("enableFloat", true)
-                put("updatable", true)
-                put("ticker", "HyperOriG")
-                put("isShowNotification", false)
-                put("param_island", JSONObject().apply {
-                    put("islandProperty", 1)
-                    put("islandTimeout", ISLAND_TIMEOUT_SECONDS)
-                    put("bigIslandArea", JSONObject().apply {
-                        put("imageTextInfoLeft", JSONObject().apply {
-                            put("type", 1)
-                            put("picInfo", JSONObject().apply {
-                                put("type", 1)
-                                put("pic", "miui.focus.pic_left")
-                            })
-                            put("textInfo", JSONObject().apply {
-                                put("title", leftText)
-                                put("content", "%")
-                            })
-                        })
-                        put("imageTextInfoRight", JSONObject().apply {
-                            put("type", 2)
-                            put("picInfo", JSONObject().apply {
-                                put("type", 1)
-                                put("pic", "miui.focus.pic_right")
-                            })
-                            put("textInfo", JSONObject().apply {
-                                put("title", rightText)
-                                put("content", "%")
-                            })
-                        })
-                    })
-                })
-            })
-        }.toString()
     }
 }
